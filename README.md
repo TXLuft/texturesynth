@@ -5,6 +5,8 @@ C++ Implementation of Texture Synthesis via Non-Parabolic Sampling
 
 # Dependencies
 >libpng++-dev
+>
+>install: sudo apt install libpng++-dev
 
 # How to Build
 execute build.sh on Linux via:
