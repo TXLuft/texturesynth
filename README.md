@@ -1,5 +1,5 @@
 # texturesynth
-C++ Implementation of Texture Synthesis via Non-Parabolic Sampling
+C++ Implementation of Texture Synthesis via Non-Parametric Sampling
 
 # Collaberated with Kevin Ngyuen (1495435)
 
