@@ -17,17 +17,26 @@
 struct parameters
 {
   int sample_size = 6;
-  int sample_count = 50;
+  int sample_count = 20;
+  int double_sample_size = 0;
+  int double_sample_count = 0;
   int width = 90;
   int height = 90;
   int diff_count = 0;
+};
+
+// 2d point
+struct point2D
+{
+	int x = 0;
+	int y = 0;
 };
 
 
 // prototypes
 PNG_IMAGE generate(PNG_IMAGE &input, parameters &params);
 void process_pixel(PNG_IMAGE &input, PNG_IMAGE &output, parameters &params, int ** progress, int u, int v);
-PNG_PIXEL find_match(PNG_IMAGE &input, PNG_IMAGE &output, parameters &params, int ** progress, int u, int v);
+point2D find_match(PNG_IMAGE &input, PNG_IMAGE &output, parameters &params, int ** progress, int u, int v, int x0 = 0, int x1 = 0, int y0 = 0, int y1 = 0, bool double_sample = false);
 int area_diff(PNG_IMAGE &input, PNG_IMAGE &output, parameters &params, int ** progress, int x, int y, int u, int v);
 int pixel_diff(PNG_IMAGE &input, PNG_IMAGE &output, parameters &params, int ** progress, int x, int y, int u, int v);
 int set_avg_diff_time(int time, int count);
@@ -56,6 +65,11 @@ int main(int argc, char ** argv)
   {
     params.width = std::atoi(argv[4]);
     params.height = std::atoi(argv[5]);
+  }
+  if(argc >= 8)
+  {
+  	params.double_sample_size = std::atoi(argv[6]);
+  	params.double_sample_count = std::atoi(argv[7]);
   }
   
   // load
@@ -148,20 +162,32 @@ void process_pixel(PNG_IMAGE &input, PNG_IMAGE &output, parameters &params, int 
     return;
   
   // apply match
-  PNG_PIXEL match = find_match(input, output, params, progress, u, v);
   
-  output.set_pixel(u, v, match);
+  // single sample
+  point2D match = find_match(input, output, params, progress, u, v);
+  
+  // double sample;
+  int x0 = match.x - params.double_sample_size * 0.5f;
+  int x1 = match.x + params.double_sample_size * 0.5f;
+  int y0 = match.y - params.double_sample_size * 0.5f;
+  int y1 = match.y + params.double_sample_size * 0.5f;
+  match = find_match(input, output, params, progress, u, v, x0, x1, y0, y1, true);
+  
+  // retrieve pixel
+  PNG_PIXEL inputPixel = input.get_pixel(match.x, match.y);
+  
+  output.set_pixel(u, v, inputPixel);
   
   // mark as processed
   progress[u][v] = 1;
 }
 
 
-PNG_PIXEL find_match(PNG_IMAGE &input, PNG_IMAGE &output, parameters &params, int ** progress, int u, int v)
+point2D find_match(PNG_IMAGE &input, PNG_IMAGE &output, parameters &params, int ** progress, int u, int v, int x0, int x1, int y0, int y1, bool double_sample)
 {
   // find minimum diff
   int minDiff = 768 * params.sample_size * params.sample_size;
-  PNG_PIXEL match = input.get_pixel(0, 0);
+  point2D match;
   int minX = 0;
   int minY = 0;
   
@@ -170,15 +196,34 @@ PNG_PIXEL find_match(PNG_IMAGE &input, PNG_IMAGE &output, parameters &params, in
   int inputHeight = input.get_height();
   
   // selection range
-  int clampW = inputWidth - params.sample_size;
-  int clampH = inputHeight - params.sample_size;
-  int clampOffset = params.sample_size * 0.5f;
+  if(x0 >= x1)
+  {
+  	x0 = 0;
+  	x1 = inputWidth;
+ 	}
+  if(y0 >= y1)
+  {
+  	y0 = 0;
+  	y1 = inputHeight; 	
+ 	}
+  x0 = std::max(x0, int(params.sample_size * 0.5f));
+  x1 = std::min(x1, int(inputWidth - params.sample_size * 0.5f));
+  y0 = std::max(y0, int(params.sample_size * 0.5f));
+  y1 = std::min(y1, int(inputHeight - params.sample_size * 0.5f));
+  int clampW = x1 - x0;
+  int clampH = y1 - y0;
   
+  // determine sample count
+  int sample_count = params.sample_count;
+  if(double_sample)
+  	sample_count = params.double_sample_count;
+  
+  // do samples
   for(int i = 0; i < params.sample_count; i++)
   {
     // select random sample coordinate
-    int x = clampOffset + std::rand() % clampW;
-    int y = clampOffset + std::rand() % clampH;
+    int x = x0 + std::rand() % clampW;
+    int y = y0 + std::rand() % clampH;
     
     int diff = area_diff(input, output, params, progress, x, y, u, v);
     
@@ -190,7 +235,9 @@ PNG_PIXEL find_match(PNG_IMAGE &input, PNG_IMAGE &output, parameters &params, in
     }
   }
   
-  match = input.get_pixel(minX, minY);
+  // return position
+  match.x = minX;
+  match.y = minY;
   
   return match;
 }
