@@ -40,3 +40,7 @@ execute hw5 on Linux via:
 > "sample_count" is the number of neighborhoods sampled from the source image
 >
 > "width" and "height" are the output dimensions
+>
+> "double_sample_size" is the size of the double-sampling window
+>
+> "double_sample_count" is the number of double-samples taken. Redistribute some of "sample_count" into "double_sample_count" to improve image quality.
